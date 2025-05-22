@@ -1,7 +1,7 @@
-/new/node_modules/
-/new/.output/
-/new/.nuxt/
-/new/ref/
+/web/node_modules/
+/web/.output/
+/web/.nuxt/
+/web/ref/
 /.venv/
 /test_main.http
 /.idea
