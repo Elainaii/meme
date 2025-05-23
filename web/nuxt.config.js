@@ -26,10 +26,9 @@ export default defineNuxtConfig({
   css: ['@unocss/reset/tailwind.css'],
   
   devtools: { enabled: true },
-  
-  nitro: {
+    nitro: {
     prerender: {
-      routes: ['/']
+      routes: ['/', '/admin']
     }
   }
 })

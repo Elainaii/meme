@@ -12,9 +12,7 @@ const isHomePage = computed(() => route.path === '/')
       <NuxtLink to="/" class="font-medium flex gap-1 items-center sm:gap-2">
         <span class="i-carbon-image text-lg text-blue-500 sm:text-xl" />
         <span class="text-sm sm:text-base">{{ appName }}</span>
-      </NuxtLink>
-
-      <!-- Navigation -->
+      </NuxtLink>      <!-- Navigation -->
       <div class="flex gap-2 items-center sm:gap-4">
         <NuxtLink
           v-if="!isHomePage"
@@ -23,6 +21,14 @@ const isHomePage = computed(() => route.path === '/')
         >
           <span class="i-carbon-home" />
           <span class="xs:inline hidden">首页</span>
+        </NuxtLink>
+          <!-- Admin link -->
+        <NuxtLink
+          to="/admin"
+          class="text-xs px-2 py-1 rounded-md flex gap-1 transition-colors items-center sm:text-sm sm:px-3 sm:py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800"
+        >
+          <span class="i-carbon-user-admin || i-carbon-settings || i-carbon-password" />
+          <span class="xs:inline hidden">管理员</span>
         </NuxtLink>
 
         <!-- Theme toggle button -->
