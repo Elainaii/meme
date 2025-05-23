@@ -3,7 +3,7 @@ import { appDescription } from '~/constants'
 </script>
 
 <template>
-  <div class="px-4 flex flex-col h-full items-center justify-center sm:px-6">
+  <div class="px-4 pt-10 flex flex-col h-full items-center justify-center sm:px-6">
     <div class="mb-6 text-center sm:mb-10">
       <div class="mb-3 flex justify-center sm:mb-4">
         <div class="i-carbon-image text-5xl text-blue-500 sm:text-6xl" />
