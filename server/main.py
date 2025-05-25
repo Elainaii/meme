@@ -6,6 +6,7 @@ import os
 import shutil
 import hashlib
 from typing import List, Optional
+import glob
 
 # 导入数据库相关模块
 from .database import (
@@ -17,7 +18,7 @@ from .database import (
 
 app = FastAPI()
 
-# 在应用启动时创建数据库表
+# 在应用启动时创建数据库表并执行迁移
 @app.on_event("startup")
 async def startup_db_client():
     create_tables()
@@ -37,9 +38,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 定义相对路径
-# 图片存储在server/images目录下
-IMAGES_DIR = "images"
+# 定义根目录路径和图片目录路径
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+# 图片存储在根目录的images文件夹下
+IMAGES_DIR = os.path.join(ROOT_DIR, "images")
 CHECKED_DIR = os.path.join(IMAGES_DIR, "checked")
 UNCHECKED_DIR = os.path.join(IMAGES_DIR, "unchecked")
 
@@ -47,8 +49,15 @@ UNCHECKED_DIR = os.path.join(IMAGES_DIR, "unchecked")
 os.makedirs(CHECKED_DIR, exist_ok=True)
 os.makedirs(UNCHECKED_DIR, exist_ok=True)
 
-# 示例图片路径
+# 示例图片路径 - 如果根目录下没有，则使用服务器目录下的备用图片
 EXAMPLE_IMAGE_PATH = os.path.join(IMAGES_DIR, "example.jpg")
+if not os.path.exists(EXAMPLE_IMAGE_PATH):
+    SERVER_EXAMPLE = os.path.join(os.path.dirname(__file__), "images", "example.jpg")
+    if os.path.exists(SERVER_EXAMPLE):
+        # 如果服务器目录下有示例图片，复制到根目录
+        shutil.copy(SERVER_EXAMPLE, EXAMPLE_IMAGE_PATH)
+    else:
+        print("警告: 未找到示例图片")
 
 # 定义图片信息响应模型
 class ImageInfo(BaseModel):
@@ -65,7 +74,7 @@ class ImageInfo(BaseModel):
 async def fetch_random_image(current: str = "", db: Session = Depends(get_db)):
     """从数据库随机获取一张已审核的图片，可以指定当前图片以获取不同的图片"""
     current_id = None
-    
+
     # 如果提供了当前图片名称，获取其ID
     if current:
         current_image = db.query(Image).filter(Image.file_name == current).first()
@@ -109,7 +118,7 @@ async def fetch_random_image(current: str = "", db: Session = Depends(get_db)):
 async def fetch_checked_image(image_id: int, db: Session = Depends(get_db)):
     """从数据库中获取指定ID的已审核图片"""
     db_image = db.query(Image).filter(Image.id == image_id, Image.is_checked == True).first()
-    
+
     if not db_image:
         raise HTTPException(status_code=404, detail="未找到该ID的审核图片")
     
@@ -201,7 +210,7 @@ async def upload_image(file: UploadFile = File(...), db: Session = Depends(get_d
             # 如果数据库有记录但文件不存在，则保存文件
             # 确保目录存在
             os.makedirs(os.path.dirname(existing_image.file_path), exist_ok=True)
-            with open(existing_image.file_path, "wb") as buffer:
+            with oen(existing_image.file_path, "wb") as buffer:
                 await file.seek(0)
                 shutil.copyfileobj(file.file, buffer)
         
