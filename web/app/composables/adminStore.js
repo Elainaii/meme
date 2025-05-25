@@ -1,8 +1,9 @@
 import { ref } from 'vue'
 
+// 全局状态，确保所有组件共享同一个状态
+const isAuthenticated = ref(false)
+
 export const useAdminStore = () => {
-  const isAuthenticated = ref(false)
-  
   // 检查是否已登录
   function checkAuth() {
     if (process.client) {

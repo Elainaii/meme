@@ -10,7 +10,8 @@ export default defineNuxtConfig({
       link: [
         { rel: 'icon', href: '/favicon.ico' }
       ]
-    }
+    },
+    pageTransition: { name: 'page', mode: 'out-in' }
   },
   
   modules: [
@@ -26,9 +27,15 @@ export default defineNuxtConfig({
   css: ['@unocss/reset/tailwind.css'],
   
   devtools: { enabled: true },
-    nitro: {
+  nitro: {
     prerender: {
       routes: ['/', '/admin']
+    }
+  },
+  
+  router: {
+    options: {
+      strict: false
     }
   }
 })
