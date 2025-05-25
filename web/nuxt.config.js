@@ -1,6 +1,5 @@
 export default defineNuxtConfig({
   srcDir: 'app',
-  
   app: {
     head: {
       meta: [
@@ -27,9 +26,12 @@ export default defineNuxtConfig({
   css: ['@unocss/reset/tailwind.css'],
   
   devtools: { enabled: true },
+  
   nitro: {
     prerender: {
-      routes: ['/', '/admin']
+      failOnError: false,
+      routes: ['/'],
+      ignore: ['/admin/**', '/login']
     }
   },
   
