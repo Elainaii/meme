@@ -5,6 +5,7 @@ definePageMeta({
 })
 
 import { ref, onMounted, computed } from 'vue'
+import { apiRequest, getImageUrl } from '~/utils/api'
 const adminStore = useAdminStore()
 const router = useRouter()
 
@@ -41,18 +42,16 @@ async function loadAllCounts() {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     }
-    
-    // 获取未审核图片数量
-    const uncheckedResponse = await fetch('http://127.0.0.1:8000/admin/pending-images', {
+      // 获取未审核图片数量
+    const uncheckedResponse = await apiRequest('/admin/pending-images', {
       headers
     })
     if (uncheckedResponse.ok) {
       const data = await uncheckedResponse.json()
       totalUncheckedImages.value = data.total || 0
     }
-    
-    // 获取已审核图片数量（只获取第一页来获取总数）
-    const checkedResponse = await fetch('http://127.0.0.1:8000/admin/checked-images?page=1&page_size=1', {
+      // 获取已审核图片数量（只获取第一页来获取总数）
+    const checkedResponse = await apiRequest('/admin/checked-images?page=1&page_size=1', {
       headers
     })
     if (checkedResponse.ok) {
@@ -73,9 +72,8 @@ async function loadImages() {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     }
-      if (activeTab.value === 'unchecked') {
-      // 加载未审核图片
-      const uncheckedResponse = await fetch('http://127.0.0.1:8000/admin/pending-images', {
+      if (activeTab.value === 'unchecked') {      // 加载未审核图片
+      const uncheckedResponse = await apiRequest('/admin/pending-images', {
         headers
       });
       
@@ -83,9 +81,8 @@ async function loadImages() {
         const data = await uncheckedResponse.json();
         uncheckedImages.value = data.images || [];
         totalUncheckedImages.value = data.total || 0;
-      }    } else {
-      // 加载已审核图片（分页）
-      const checkedResponse = await fetch(`http://127.0.0.1:8000/admin/checked-images?page=${currentPage.value}&page_size=${pageSize.value}`, {
+      }    } else {      // 加载已审核图片（分页）
+      const checkedResponse = await apiRequest(`/admin/checked-images?page=${currentPage.value}&page_size=${pageSize.value}`, {
         headers
       });
       
@@ -134,7 +131,7 @@ const pageNumbers = computed(() => {
 async function approveImage(imageId) {
   try {
     const token = adminStore.getToken()
-    const response = await fetch(`http://127.0.0.1:8000/image/${imageId}/check`, {
+    const response = await apiRequest(`/image/${imageId}/check`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -160,7 +157,7 @@ async function deleteImage(imageId) {
   
   try {
     const token = adminStore.getToken()
-    const response = await fetch(`http://127.0.0.1:8000/admin/image/${imageId}`, {
+    const response = await apiRequest(`/admin/image/${imageId}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`
@@ -280,9 +277,8 @@ function formatDate(dateString) {
             @mouseenter="hoveredImage = image.id"
             @mouseleave="hoveredImage = null"
           >
-            <div class="relative">
-              <img 
-                :src="`http://127.0.0.1:8000/image/unchecked/${image.id}`"
+            <div class="relative">              <img 
+                :src="getImageUrl(`/image/unchecked/${image.id}`)"
                 :alt="image.file_name"
                 class="w-full h-48 object-cover"
               />
@@ -324,9 +320,8 @@ function formatDate(dateString) {
             @mouseenter="hoveredImage = image.id"
             @mouseleave="hoveredImage = null"
           >
-            <div class="relative">
-              <img 
-                :src="`http://127.0.0.1:8000/image/checked/${image.id}`"
+            <div class="relative">              <img 
+                :src="getImageUrl(`/image/checked/${image.id}`)"
                 :alt="image.file_name"
                 class="w-full h-48 object-cover"
               />

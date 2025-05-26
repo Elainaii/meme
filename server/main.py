@@ -8,9 +8,10 @@ import hashlib
 from typing import List, Optional
 import glob
 from datetime import timedelta
+import time
 
 # 导入数据库相关模块
-from .database import (
+from database import (
     get_db, Image, create_tables, add_image, get_image_by_hash,
     get_image_by_id, get_image_by_filename, get_random_checked_image,
     get_all_checked_images, get_all_unchecked_images,
@@ -18,21 +19,46 @@ from .database import (
 )
 
 # 导入认证相关模块
-from .config import verify_admin_password, ACCESS_TOKEN_EXPIRE_MINUTES
-from .auth import create_access_token, get_current_admin_user
+from config import verify_admin_password, ACCESS_TOKEN_EXPIRE_MINUTES
+from auth import create_access_token, get_current_admin_user
 
-app = FastAPI()
+app = FastAPI(title="Meme API", description="Meme图片管理API", version="1.0.0")
 
 # 在应用启动时创建数据库表并执行迁移
 @app.on_event("startup")
 async def startup_db_client():
     create_tables()
 
+# 健康检查端点
+@app.get("/health")
+async def health_check():
+    """健康检查端点，用于监控服务状态"""
+    try:
+        # 检查数据库连接
+        db = next(get_db())
+        # 简单地尝试获取数据库会话
+        db.close()
+        
+        return {
+            "status": "healthy",
+            "timestamp": time.time(),
+            "database": "connected",
+            "service": "running"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=503, detail={
+            "status": "unhealthy",
+            "timestamp": time.time(),
+            "error": str(e)
+        })
+
 origins = [
     "http://localhost:3000",
     "http://localhost:3001",
     "http://localhost:3002",
     "http://localhost:8000",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:8000",
 ]
 
 app.add_middleware(

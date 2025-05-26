@@ -1,6 +1,7 @@
 /web/node_modules/
 /web/.output/
 /web/.nuxt/
+/web/.env
 /web/ref/
 /.venv/
 /test_main.http

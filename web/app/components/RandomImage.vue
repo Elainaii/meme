@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { apiRequest } from '~/utils/api'
 
 const imageUrl = ref('')
 const loading = ref(true)
@@ -28,7 +29,7 @@ async function fetchRandomImage() {
     // imageUrl.value = data.imageUrl
     
     // 方式2：使用公共图片API
-    const response = await fetch('http://127.0.0.1:8000/image')
+    const response = await apiRequest('/image')
     if (!response.ok) {
       throw new Error('无法获取图片')
     }

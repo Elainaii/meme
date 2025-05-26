@@ -5,7 +5,15 @@ import os
 from datetime import datetime
 
 # 数据库配置
-DATABASE_URL = "mysql+pymysql://root:123456@localhost/meme_db"  # 请根据你的MySQL配置修改
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    # 如果没有环境变量，使用默认配置
+    DB_HOST = os.getenv("DB_HOST", "localhost")
+    DB_PORT = os.getenv("DB_PORT", "3306")
+    DB_USER = os.getenv("DB_USER", "root")
+    DB_PASSWORD = os.getenv("DB_PASSWORD", "123456")
+    DB_NAME = os.getenv("DB_NAME", "meme_db")
+    DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 # 创建SQLAlchemy引擎和会话
 engine = create_engine(DATABASE_URL)

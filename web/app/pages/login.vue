@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { apiRequest } from '~/utils/api'
 
 const router = useRouter()
 const adminStore = useAdminStore()
@@ -24,14 +25,10 @@ async function handleLogin() {
   
   loading.value = true
   error.value = null
-  
-  try {
+    try {
     // 发送密码到后端验证
-    const response = await fetch('http://127.0.0.1:8000/admin/verify', {
+    const response = await apiRequest('/admin/verify', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({ password: password.value }),
     })
       if (!response.ok) {
@@ -141,14 +138,13 @@ function goHome() {
         </div>
       </form>
     </div>
-    
-    <div class="mt-8 text-center">
-      <p class="text-sm text-gray-500 px-6 py-3 rounded-full bg-white/60 shadow-sm backdrop-blur-md sm:text-base dark:text-gray-400 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+      <div class="mt-8 text-center">
+      <div class="text-sm text-gray-500 px-6 py-3 rounded-full bg-white/60 shadow-sm backdrop-blur-md sm:text-base dark:text-gray-400 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
         <div class="flex items-center justify-center">
           <div class="i-carbon-information text-blue-500 mr-2" />
           <span>仅限管理员访问</span>
         </div>
-      </p>
+      </div>
     </div>
   </div>
 </template>

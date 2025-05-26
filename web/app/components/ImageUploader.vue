@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue'
+import { apiRequest } from '~/utils/api'
 
 const emit = defineEmits(['close'])
 
@@ -72,7 +73,7 @@ async function uploadImage() {
     const formData = new FormData()
     formData.append('file', selectedFile.value)
     
-    const response = await fetch('http://127.0.0.1:8000/upload/', {
+    const response = await apiRequest('/upload/', {
       method: 'POST',
       body: formData
     })
