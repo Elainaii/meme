@@ -187,10 +187,9 @@ onUnmounted(() => {
           正在加载图片...
         </h2>
       </div>
-        <div v-else class="p-4 text-center">        
-        <div 
+        <div v-else class="p-4 text-center">          <div 
           ref="imageContainer"
-          class="mb-4 relative overflow-hidden transition-all duration-300 ease-in-out rounded-lg"
+          class="mb-4 relative transition-all duration-300 ease-in-out rounded-lg shadow-lg hover:shadow-xl"
           :style="imageDimensions.width && imageDimensions.height ? {
             width: imageDimensions.width + 'px',
             height: imageDimensions.height + 'px'
@@ -199,24 +198,21 @@ onUnmounted(() => {
             :key="imageKey"
             :src="imageUrl" 
             alt="随机图片" 
-            class="current-image w-full h-auto rounded-lg cursor-pointer transition-all duration-300 ease-out shadow-lg hover:shadow-2xl"
-            :class="{ 
+            class="current-image w-full h-auto rounded-lg cursor-pointer transition-all duration-300 ease-out"            :class="{ 
               'opacity-0 scale-95': switchingImage,
-              'hover:scale-105': !switchingImage
+              'hover:scale-105 hover:z-10 relative': !switchingImage
             }"
             @click="openPreview"
             @load="onImageLoad"
           />
         </div>
-        <p class="text-sm text-gray-600 mb-4 dark:text-gray-400">
-          这是一张从服务器随机获取的图片
-        </p>        <button 
+          <button 
           @click="getNewImage" 
           :disabled="switchingImage || (!nextImageUrl && !loading)"
           class="text-blue-700 px-4 py-2 rounded-lg bg-blue-100 inline-flex gap-2 transition-colors items-center dark:text-blue-300 dark:bg-blue-900/50 hover:bg-blue-200 dark:hover:bg-blue-800/70 disabled:opacity-50"
         >
           <span class="i-carbon-renew" :class="{ 'animate-spin': switchingImage || !nextImageUrl }" />
-          <span>{{ switchingImage ? '换图中...' : (!nextImageUrl ? '准备中...' : '换一张') }}</span>
+          <span>{{ switchingImage ? '换图中' : (!nextImageUrl ? '准备中' : '换一张') }}</span>
         </button>
       </div>
     </div>
@@ -241,7 +237,7 @@ onUnmounted(() => {
             class="text-white bg-black/50 rounded-full px-6 py-3 transition-colors hover:bg-black/70 flex items-center gap-2 backdrop-blur-sm disabled:opacity-50"
           >
             <span class="i-carbon-renew" :class="{ 'animate-spin': switchingImage || !nextImageUrl }" />
-            <span>{{ switchingImage ? '换图中...' : (!nextImageUrl ? '准备中...' : '换一张') }}</span>
+            <span>{{ switchingImage ? '换图中' : (!nextImageUrl ? '准备中' : '换一张') }}</span>
           </button>
         </div>        <!-- 图片容器 -->
         <div class="absolute inset-0 flex items-center justify-center pt-16 pb-24 px-16">
@@ -291,6 +287,19 @@ onUnmounted(() => {
     0 20px 25px -5px rgba(0, 0, 0, 0.1),
     0 10px 10px -5px rgba(0, 0, 0, 0.04),
     0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* 容器阴影效果 */
+[ref="imageContainer"] {
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+[ref="imageContainer"]:hover {
+  box-shadow: 
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
 /* 容器尺寸过渡 */

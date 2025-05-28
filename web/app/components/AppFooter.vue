@@ -49,7 +49,7 @@ onUnmounted(() => {
               v-if="showHelpTooltip"
               class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 px-4 py-3 bg-white text-gray-800 text-sm rounded-lg shadow-xl border border-gray-200 whitespace-nowrap dark:bg-gray-900 dark:text-white dark:border-gray-700 animate-bounce-in"
             >
-              杂鱼~杂鱼~就两个按钮，点一下就行了
+              杂鱼~杂鱼~就两个按钮，点一下就知道了
               <!-- 小三角形 -->
               <div class="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-white dark:border-t-gray-900"></div>
             </div>
