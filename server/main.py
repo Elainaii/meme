@@ -6,28 +6,33 @@ import os
 import shutil
 import hashlib
 from typing import List, Optional
-import glob
 from datetime import timedelta
 import time
+import httpx
+from io import BytesIO
 
 # 导入数据库相关模块
 from database import (
     get_db, Image, create_tables, add_image, get_image_by_hash,
-    get_image_by_id, get_image_by_filename, get_random_checked_image,
-    get_all_checked_images, get_all_unchecked_images,
+    get_random_checked_image, get_all_checked_images, get_all_unchecked_images,
     update_image_checked_status, update_image_likes, update_image_dislikes
 )
 
 # 导入认证相关模块
-from config import verify_admin_password, ACCESS_TOKEN_EXPIRE_MINUTES
+from config import (
+    verify_admin_password, ACCESS_TOKEN_EXPIRE_MINUTES,
+    PICGO_API_URL, PICGO_API_KEY
+)
 from auth import create_access_token, get_current_admin_user
 
 app = FastAPI(title="Meme API", description="Meme图片管理API", version="1.0.0")
+
 
 # 在应用启动时创建数据库表并执行迁移
 @app.on_event("startup")
 async def startup_db_client():
     create_tables()
+
 
 # 健康检查端点
 @app.get("/health")
@@ -58,13 +63,14 @@ origins = [
     "http://localhost:3002",
     "http://localhost:8000",
     "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
     "http://127.0.0.1:8000",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    allow_origins=["*"],  # 允许所有来源，这样可以确保CORS不会阻止请求
+    allow_credentials=False,  # 当使用通配符时必须设置为False
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -91,6 +97,8 @@ if not os.path.exists(EXAMPLE_IMAGE_PATH):
         print("警告: 未找到示例图片")
 
 # 定义图片信息响应模型
+
+
 class ImageInfo(BaseModel):
     id: int
     file_name: str
@@ -120,192 +128,401 @@ class AdminImageResponse(BaseModel):
     created_at: str
 
 
-@app.get("/image")
-async def fetch_random_image(current: str = "", db: Session = Depends(get_db)):
-    """从数据库随机获取一张已审核的图片，可以指定当前图片以获取不同的图片"""
+@app.get("/image-info")
+async def get_image_info(current: str = "", db: Session = Depends(get_db)):
+    """获取图片信息，返回图片URL而不是二进制数据"""
     current_id = None
 
-    # 如果提供了当前图片名称，获取其ID
     if current:
         current_image = db.query(Image).filter(Image.file_name == current).first()
         if current_image:
             current_id = current_image.id
-    
+
+    db_image = get_random_checked_image(db, current_id)
+
+    if not db_image:
+        raise HTTPException(status_code=404, detail="没有可用的图片")
+
+    # 返回图片信息，包括图床URL
+    return {
+        "id": db_image.id,
+        "file_name": db_image.file_name,
+        "image_url": db_image.image_bed_url if db_image.image_bed_url else None,
+        "likes": db_image.likes,
+        "dislikes": db_image.dislikes
+    }
+
+
+@app.get("/test-cors")
+async def test_cors():
+    """测试CORS端点"""
+    return {"message": "CORS正常工作", "status": "success"}
+
+
+@app.get("/image")
+async def fetch_random_image(current: str = "", db: Session = Depends(get_db)):
+    """从数据库随机获取一张已审核的图片，返回图片信息和图床URL"""
+    import time
+
+    # 开始计时
+    start_time = time.time()
+    current_id = None
+
+    # 如果提供了当前图片名称，获取其ID
+    if current:
+        current_image = db.query(Image).filter(
+            Image.file_name == current
+        ).first()
+        if current_image:
+            current_id = current_image.id
+
     # 从数据库获取随机图片
     db_image = get_random_checked_image(db, current_id)
-      # 如果数据库中没有已审核的图片，则使用示例图片
+
+    # 如果数据库中没有已审核的图片，返回404
     if not db_image:
-        with open(EXAMPLE_IMAGE_PATH, "rb") as image_file:
-            content = image_file.read()
-        return Response(content=content, media_type="image/jpeg")
-    
-    # 构建图片路径并读取文件
-    image_path = db_image.file_path
-      # 确保文件存在
-    if not os.path.exists(image_path):
-        with open(EXAMPLE_IMAGE_PATH, "rb") as image_file:
-            content = image_file.read()
-        return Response(content=content, media_type="image/jpeg")
-    
-    # 读取文件内容
-    with open(image_path, "rb") as image_file:
-        content = image_file.read()
-    
-    # 使用数据库中存储的媒体类型
-    media_type = db_image.mime_type
-    
-    # 添加图片信息到响应头
-    headers = {
-        "X-Image-Name": db_image.file_name,
-        "X-Image-ID": str(db_image.id),
-        "X-Image-Likes": str(db_image.likes),
-        "X-Image-Dislikes": str(db_image.dislikes)
+        # 计算耗时并记录
+        end_time = time.time()
+        execution_time = end_time - start_time
+        print(f"获取随机图片失败 - 执行时间: {execution_time:.3f}秒")
+        raise HTTPException(status_code=404, detail="没有可用的图片")
+
+    # 计算耗时并记录
+    end_time = time.time()
+    execution_time = end_time - start_time
+    print(f"成功获取随机图片信息 - 图片ID: {db_image.id}, "
+          f"文件名: {db_image.file_name}, 执行时间: {execution_time:.3f}秒")
+
+    # 返回图片信息，优先使用图床URL
+    image_url = db_image.image_bed_url
+    if not image_url or not image_url.strip():
+        image_url = f"/image/checked/{db_image.id}"
+
+    return {
+        "id": db_image.id,
+        "file_name": db_image.file_name,
+        "image_url": image_url,
+        "likes": db_image.likes,
+        "dislikes": db_image.dislikes,
+        "size" : db_image.file_size,
+        "width": db_image.width if db_image.width else None,
+        "height": db_image.height if db_image.height else None
     }
-    
-    return Response(content=content, media_type=media_type, headers=headers)
 
 @app.get("/image/checked/{image_id}")
 async def fetch_checked_image(image_id: int, db: Session = Depends(get_db)):
-    """从数据库中获取指定ID的已审核图片"""
+    """从数据库中获取指定ID的已审核图片，通过后端代理获取图片内容"""
     db_image = db.query(Image).filter(Image.id == image_id, Image.is_checked == True).first()
 
     if not db_image:
         raise HTTPException(status_code=404, detail="未找到该ID的审核图片")
+
+    # 调试信息：打印图片信息
+    print(f"获取到图片 - ID: {db_image.id}, 文件名: {db_image.file_name}")
+    print(f"图床URL: '{db_image.image_bed_url}'")
+    print(f"本地路径: '{db_image.file_path}'")
     
-    image_path = db_image.file_path
-    if not os.path.exists(image_path):
-        raise HTTPException(status_code=404, detail="图片文件不存在")
+    # 如果有PicGo图床URL，通过后端代理获取图片
+    if db_image.image_bed_url and db_image.image_bed_url.strip():
+        image_url = db_image.image_bed_url.strip()
+        
+        if image_url.startswith(('http://', 'https://')):
+            try:
+                # 通过后端代理获取图片内容
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    response = await client.get(image_url)
+                    
+                    if response.status_code == 200:
+                        # 获取图片内容类型
+                        content_type = response.headers.get('content-type', 'image/jpeg')
+                        # 返回图片内容
+                        headers = {
+                            "X-Image-Name": db_image.file_name,
+                            "X-Image-ID": str(db_image.id),
+                            "X-Image-Likes": str(db_image.likes),
+                            "X-Image-Dislikes": str(db_image.dislikes),
+                            "Cache-Control": "public, max-age=3600"
+                        }
+                        
+                        return Response(
+                            content=response.content,
+                            media_type=content_type,
+                            headers=headers
+                        )
+                    else:
+                        print(f"图床返回错误状态码: {response.status_code}")
+                        
+            except Exception as e:
+                print(f"从图床获取图片失败: {e}")
+
+    # 如果没有图床URL但有本地文件路径，作为后备方案
+    if db_image.file_path and os.path.exists(db_image.file_path):
+        with open(db_image.file_path, "rb") as image_file:
+            content = image_file.read()
+        
+        media_type = db_image.mime_type
+        headers = {
+            "X-Image-Name": db_image.file_name,
+            "X-Image-ID": str(db_image.id),
+            "X-Image-Likes": str(db_image.likes),
+            "X-Image-Dislikes": str(db_image.dislikes)
+        }
+        return Response(content=content, media_type=media_type, headers=headers)
     
-    with open(image_path, "rb") as image_file:
-        content = image_file.read()
-    
-    # 使用数据库中存储的媒体类型
-    media_type = db_image.mime_type
-    
-    # 添加图片信息到响应头
-    headers = {
-        "X-Image-Name": db_image.file_name,
-        "X-Image-ID": str(db_image.id),
-        "X-Image-Likes": str(db_image.likes),
-        "X-Image-Dislikes": str(db_image.dislikes)
-    }
-    
-    return Response(content=content, media_type=media_type, headers=headers)
+    # 如果既没有图床URL也没有本地文件，返回404
+    raise HTTPException(status_code=404, detail="图片文件不可用")
 
 
 @app.get("/image/unchecked/{image_id}")
 async def fetch_unchecked_image(image_id: int, db: Session = Depends(get_db)):
-    """从数据库中获取指定ID的未审核图片"""
+    """从数据库中获取指定ID的未审核图片，通过后端代理获取图片内容"""
     db_image = db.query(Image).filter(Image.id == image_id, Image.is_checked == False).first()
     
     if not db_image:
         raise HTTPException(status_code=404, detail="未找到该ID的未审核图片")
     
-    image_path = db_image.file_path
-    if not os.path.exists(image_path):
-        raise HTTPException(status_code=404, detail="图片文件不存在")
+    # 如果有PicGo图床URL，通过后端代理获取图片
+    if db_image.image_bed_url and db_image.image_bed_url.strip():
+        image_url = db_image.image_bed_url.strip()
+        
+        if image_url.startswith(('http://', 'https://')):
+            try:
+                # 通过后端代理获取图片内容
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    response = await client.get(image_url)
+                    
+                    if response.status_code == 200:
+                        # 获取图片内容类型
+                        content_type = response.headers.get('content-type', 'image/jpeg')
+                        # 返回图片内容
+                        headers = {
+                            "X-Image-Name": db_image.file_name,
+                            "X-Image-ID": str(db_image.id),
+                            "Cache-Control": "public, max-age=3600"
+                        }
+                        
+                        return Response(
+                            content=response.content,
+                            media_type=content_type,
+                            headers=headers
+                        )
+                    else:
+                        print(f"图床返回错误状态码: {response.status_code}")
+                        
+            except Exception as e:
+                print(f"从图床获取图片失败: {e}")
     
-    with open(image_path, "rb") as image_file:
-        content = image_file.read()
+    # 如果没有图床URL但有本地文件路径，作为后备方案
+    if db_image.file_path and os.path.exists(db_image.file_path):
+        with open(db_image.file_path, "rb") as image_file:
+            content = image_file.read()
+        
+        media_type = db_image.mime_type
+        headers = {
+            "X-Image-Name": db_image.file_name,
+            "X-Image-ID": str(db_image.id)
+        }
+        return Response(content=content, media_type=media_type, headers=headers)
     
-    # 使用数据库中存储的媒体类型
-    media_type = db_image.mime_type
-    
-    # 添加图片信息到响应头
-    headers = {
-        "X-Image-Name": db_image.file_name,
-        "X-Image-ID": str(db_image.id)
-    }
-    
-    return Response(content=content, media_type=media_type, headers=headers)
+    # 如果既没有图床URL也没有本地文件，返回404
+    raise HTTPException(status_code=404, detail="图片文件不可用")
 
 @app.post("/upload/")
 async def upload_image(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    """上传图片并将信息存入数据库"""
+    """上传图片到PicGo图床并将信息存入数据库"""
     # 检查文件类型
-    allowed_types = ["image/jpeg", "image/png", "image/gif"]
+    allowed_types = ["image/jpeg", "image/png", "image/gif", "image/webp"]
     if file.content_type not in allowed_types:
         raise HTTPException(
             status_code=400, 
-            detail="只允许上传图片文件（JPEG, PNG, GIF）"
+            detail="只允许上传图片文件（JPEG, PNG, GIF, WEBP）"
         )
-    
-    # 获取文件扩展名
-    file_ext = os.path.splitext(file.filename)[1]
     
     # 读取文件内容并计算哈希值用于查重
     contents = await file.read()
     file_hash = hashlib.md5(contents).hexdigest()
-      # 重置文件指针
-    await file.seek(0)
+    await file.seek(0)  # 重置文件指针
     
     # 检查数据库中是否已存在相同哈希值的图片
     existing_image = get_image_by_hash(db, file_hash)
     
     if existing_image:
-        # 将绝对路径转换为相对路径（如果需要）
-        if os.path.isabs(existing_image.file_path):
-            # 检查是否是以前的绝对路径格式
-            filename = os.path.basename(existing_image.file_path)
-            if existing_image.is_checked:
-                new_path = os.path.join(CHECKED_DIR, filename)
-            else:
-                new_path = os.path.join(UNCHECKED_DIR, filename)
-            # 更新数据库中的路径
-            existing_image.file_path = new_path
-            db.commit()
-            
-        # 确保文件确实存在于文件系统中
-        if not os.path.exists(existing_image.file_path):
-            # 如果数据库有记录但文件不存在，则保存文件
-            # 确保目录存在
-            os.makedirs(os.path.dirname(existing_image.file_path), exist_ok=True)
-            with open(existing_image.file_path, "wb") as buffer:
-                await file.seek(0)
-                shutil.copyfileobj(file.file, buffer)
-        
         return {
             "status": "success", 
             "message": "图片已存在",
             "filename": existing_image.file_name,
             "id": existing_image.id,
-            "path": existing_image.file_path
-        }    # 构建新文件名和路径，默认为未审核状态
-    new_filename = f"{file_hash}{file_ext}"
-    # 使用相对路径 images/unchecked
-    file_path = os.path.join(UNCHECKED_DIR, new_filename)
+            "image_bed_url": existing_image.image_bed_url
+        }
     
-    # 确保目录存在（之前已经创建，这里为了保险再确认一次）
-    os.makedirs(UNCHECKED_DIR, exist_ok=True)
-    
-    # 保存文件
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    
-    # 获取文件大小
-    file_size = os.path.getsize(file_path)
-    
-    # 添加到数据库
-    db_image = add_image(
-        db=db,
-        file_name=new_filename,
-        file_hash=file_hash,
-        file_path=file_path,
-        is_checked=False,  # 默认为未审核
-        file_size=file_size,
-        mime_type=file.content_type
-    )
-    
-    return {
-        "status": "success", 
-        "message": "图片上传成功", 
-        "filename": new_filename,
-        "id": db_image.id,
-        "path": file_path,
-        "is_checked": db_image.is_checked,
-        "likes": db_image.likes,
-        "dislikes": db_image.dislikes
-    }
+    # 上传到PicGo图床
+    try:
+        # 验证 API 密钥
+        if not PICGO_API_KEY:
+            raise HTTPException(
+                status_code=500,
+                detail="PicGo API 密钥未设置"
+            )
+
+        # 准备请求头
+        headers = {
+            "X-API-Key": PICGO_API_KEY
+        }
+
+        # 准备文件上传数据
+        files = {
+            "source": (
+                file.filename or "image.jpg",
+                contents,
+                file.content_type
+            )
+        }        # 准备其他表单数据 - 设置为自动审核通过
+        data = {
+            "title": f"Meme_{file_hash[:8]}",
+            "description": "从Meme系统上传的图片"
+        }
+        
+        # 发送请求到 PicGo API
+        print(f"正在发送请求到PicGo API: {PICGO_API_URL}")
+        print(f"使用的API密钥: {PICGO_API_KEY[:10]}...{PICGO_API_KEY[-5:]}")
+        print(f"数据: {data}")
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    PICGO_API_URL,
+                    headers=headers,
+                    files=files,
+                    data=data
+                )
+            print(f"PicGo API响应状态码: {response.status_code}")
+            print(f"PicGo API响应内容: {response.text[:200]}")  # 只打印前200个字符避免日志过长
+        except Exception as e:
+            print(f"PicGo API请求异常: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"请求PicGo API时出错: {str(e)}"
+            )
+
+        # 处理响应
+        if response.status_code == 200:
+            try:
+                result = response.json()                # 如果上传成功，保存图片信息到数据库
+                if result.get("status_code") == 200:
+                    image_info = result["image"]
+                    image_bed_url = image_info.get("url", "")
+                    
+                    if not image_bed_url:
+                        raise HTTPException(
+                            status_code=500,
+                            detail="PicGo返回的图片URL为空"
+                        )
+                      # 获取图片尺寸信息
+                    width = image_info.get("width", 0)
+                    height = image_info.get("height", 0)
+
+                    print(width)
+                    print(height)
+                    # 如果PicGo返回的响应中没有尺寸信息，从本地文件获取
+                    if (width == 0 or height == 0) and contents:
+                        try:
+                            width, height = get_image_dimensions(contents)
+                            print(f"从本地文件获取图片尺寸: {width}x{height}")
+                        except Exception as e:
+                            print(f"获取图片尺寸失败: {e}")
+                            width, height = 0, 0
+                    
+                    # 同时保存图片到本地 unchecked 目录
+                    filename = image_info.get("filename", file.filename or f"{file_hash}.jpg")
+                    # 确保文件名安全
+                    safe_filename = "".join(c for c in filename if c.isalnum() or c in "._-")
+                    if not safe_filename:
+                        safe_filename = f"{file_hash}.jpg"
+                    
+                    local_file_path = os.path.join(UNCHECKED_DIR, safe_filename)
+                    
+                    # 如果文件已存在，添加数字后缀
+                    counter = 1
+                    base_path = local_file_path
+                    while os.path.exists(local_file_path):
+                        name, ext = os.path.splitext(base_path)
+                        local_file_path = f"{name}_{counter}{ext}"
+                        counter += 1
+                    
+                    # 保存文件到本地
+                    try:
+                        with open(local_file_path, "wb") as f:
+                            f.write(contents)
+                        print(f"图片已保存到本地: {local_file_path}")
+                    except Exception as e:
+                        print(f"保存本地文件失败: {e}")
+                        # 不阻止上传流程，继续执行
+                    
+                    # 保存图片信息到数据库
+                    db_image = add_image(
+                        db=db,
+                        file_name=filename,
+                        file_hash=file_hash,
+                        file_path=local_file_path,  # 保存本地路径
+                        image_bed_url=image_bed_url,
+                        is_checked=False,  # 默认未审核
+                        file_size=image_info.get("size", len(contents)),
+                        mime_type=image_info.get("mime", file.content_type),
+                        width=width,
+                        height=height
+                    )
+
+                    return {
+                        "status": "success", 
+                        "message": "图片上传成功", 
+                        "filename": db_image.file_name,
+                        "id": db_image.id,
+                        "image_bed_url": db_image.image_bed_url,
+                        "is_checked": db_image.is_checked,
+                        "likes": db_image.likes,
+                        "dislikes": db_image.dislikes,
+                        "file_size": db_image.file_size,
+                        "width": db_image.width,
+                        "height": db_image.height
+                    }
+                else:
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"PicGo上传失败: {result.get('status_txt', '未知错误')}"
+                    )
+            except ValueError as e:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"PicGo API 返回的响应格式错误: {str(e)}"
+                )
+        else:
+            # 上传失败
+            error_detail = response.text
+            try:
+                error_json = response.json()
+                if "error" in error_json:
+                    error_detail = error_json["error"].get("message", error_detail)
+                elif "status_txt" in error_json:
+                    error_detail = error_json["status_txt"]
+            except Exception:
+                pass
+
+            raise HTTPException(
+                status_code=500,
+                detail=f"PicGo上传失败: {error_detail}"
+            )
+
+    except httpx.TimeoutException:
+        raise HTTPException(
+            status_code=408,
+            detail="上传超时，请重试"
+        )
+    except HTTPException:
+        raise  # 重新抛出已知的HTTP异常
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"上传失败: {str(e)}"
+        )
 
 @app.post("/image/{image_id}/like")
 async def like_image(image_id: int, db: Session = Depends(get_db)):
@@ -353,13 +570,15 @@ async def list_images(
         images = db.query(Image).offset(skip).limit(limit).all()
     
     return [
-        ImageInfo(
-            id=img.id,
-            file_name=img.file_name,
-            is_checked=img.is_checked,
-            likes=img.likes,
-            dislikes=img.dislikes
-        ) for img in images
+        {
+            "id": img.id,
+            "file_name": img.file_name,
+            "is_checked": img.is_checked,
+            "likes": img.likes,
+            "dislikes": img.dislikes,
+            "image_bed_url": img.image_bed_url or "",
+            "file_size": img.file_size
+        } for img in images
     ]
 
 
@@ -370,40 +589,50 @@ async def check_image(
     db: Session = Depends(get_db)
 ):
     """更新图片的审核状态"""
-    db_image = update_image_checked_status(db, image_id, is_checked)
+    # 先获取图片信息
+    db_image = db.query(Image).filter(Image.id == image_id).first()
     if not db_image:
-        raise HTTPException(status_code=404, detail="图片未找到")    # 如果审核状态改变，则需要移动文件位置
-    old_path = db_image.file_path
+        raise HTTPException(status_code=404, detail="图片未找到")
     
-    # 根据审核状态确定图片应该存放的目录
-    if is_checked:
-        new_dir = CHECKED_DIR  # images/checked
-    else:
-        new_dir = UNCHECKED_DIR  # images/unchecked
-    
-    # 确保目录存在
-    os.makedirs(new_dir, exist_ok=True)
-    
-    # 构建新路径
-    new_path = os.path.join(new_dir, db_image.file_name)
-    
-    # 如果文件路径不同，需要移动文件
-    if old_path != new_path:
-        if os.path.exists(old_path):
-            # 先确保目标路径不存在文件
-            if os.path.exists(new_path):
-                os.remove(new_path)
+    # 如果是通过审核且有本地文件，移动文件到checked目录
+    if is_checked and db_image.file_path and os.path.exists(db_image.file_path):
+        try:
+            # 从unchecked路径获取文件名
+            filename = os.path.basename(db_image.file_path)
+            
+            # 构建checked目录的新路径
+            new_file_path = os.path.join(CHECKED_DIR, filename)
+            
+            # 如果文件已存在，添加数字后缀
+            counter = 1
+            base_path = new_file_path
+            while os.path.exists(new_file_path):
+                name, ext = os.path.splitext(base_path)
+                new_file_path = f"{name}_{counter}{ext}"
+                counter += 1
+            
             # 移动文件
-            shutil.move(old_path, new_path)
+            shutil.move(db_image.file_path, new_file_path)
+            print(f"图片文件已移动: {db_image.file_path} -> {new_file_path}")
+            
             # 更新数据库中的文件路径
-            db_image.file_path = new_path
-            db.commit()
+            db_image.file_path = new_file_path
+            
+        except Exception as e:
+            print(f"移动文件失败: {e}")
+            # 继续执行，不中断审核流程
+    
+    # 更新审核状态
+    db_image.is_checked = is_checked
+    db.commit()
+    db.refresh(db_image)
     
     return {
         "id": db_image.id,
         "file_name": db_image.file_name,
         "is_checked": db_image.is_checked,
         "file_path": db_image.file_path,
+        "image_bed_url": db_image.image_bed_url or "",
         "likes": db_image.likes,
         "dislikes": db_image.dislikes
     }
@@ -430,16 +659,16 @@ async def admin_login(request: AdminLoginRequest):
             message="密码不正确"
         )
 
-# 获取待审核图片列表（最多5张）
+# 获取待审核图片列表
 @app.get("/admin/pending-images")
 async def get_pending_images(
     current_admin: str = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
-    """获取待审核的图片（最多5张）"""
+    """获取待审核的图片列表，返回包含图床URL的图片信息"""
     try:
         print(f"Admin user: {current_admin}")
-        images = get_all_unchecked_images(db, skip=0, limit=5)
+        images = get_all_unchecked_images(db, skip=0, limit=50)  # 增加限制数量
         print(f"Found {len(images)} unchecked images")
         
         # 获取总数
@@ -455,7 +684,11 @@ async def get_pending_images(
                     "likes": img.likes,
                     "dislikes": img.dislikes,
                     "file_size": img.file_size,
-                    "created_at": img.upload_time.isoformat() if img.upload_time else None
+                    "image_url": img.image_bed_url if img.image_bed_url and img.image_bed_url.strip() else f"/image/unchecked/{img.id}",
+                    "source": "picgo" if img.image_bed_url and img.image_bed_url.strip() else "local",
+                    "width": getattr(img, 'width', 0),
+                    "height": getattr(img, 'height', 0),
+                    "created_at": img.upload_time.isoformat() if hasattr(img, 'upload_time') and img.upload_time else None
                 } for img in images
             ],
             "total": total,
@@ -477,13 +710,15 @@ async def get_checked_images(
     current_admin: str = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
-    """获取已审核图片列表（分页）"""
+    """获取已审核图片列表（分页），返回包含图床URL的图片信息"""
+    # 计算跳过的记录数
     skip = (page - 1) * page_size
     images = get_all_checked_images(db, skip=skip, limit=page_size)
     
     # 获取总数
     total = db.query(Image).filter(Image.is_checked == True).count()
     total_pages = (total + page_size - 1) // page_size
+    
     return {
         "images": [
             {
@@ -493,7 +728,11 @@ async def get_checked_images(
                 "likes": img.likes,
                 "dislikes": img.dislikes,
                 "file_size": img.file_size,
-                "created_at": img.upload_time.isoformat() if img.upload_time else None
+                "image_url": img.image_bed_url if img.image_bed_url and img.image_bed_url.strip() else f"/image/checked/{img.id}",
+                "source": "picgo" if img.image_bed_url and img.image_bed_url.strip() else "local",
+                "width": getattr(img, 'width', 0),
+                "height": getattr(img, 'height', 0),
+                "created_at": img.upload_time.isoformat() if hasattr(img, 'upload_time') and img.upload_time else None
             } for img in images
         ],
         "total": total,
@@ -522,17 +761,12 @@ async def review_image(
         
         return {"message": "图片已批准", "action": "approved"}
     
-    elif action == "reject":
-        # 拒绝图片（删除）
+    elif action == "reject":        # 拒绝图片（删除）
         db_image = db.query(Image).filter(Image.id == image_id).first()
         if not db_image:
             raise HTTPException(status_code=404, detail="图片未找到")
         
-        # 删除文件
-        if os.path.exists(db_image.file_path):
-            os.remove(db_image.file_path)
-        
-        # 删除数据库记录
+        # 删除数据库记录（不再删除本地文件，因为使用图床）
         db.delete(db_image)
         db.commit()
         
@@ -549,14 +783,500 @@ async def delete_image(
     db_image = db.query(Image).filter(Image.id == image_id).first()
     if not db_image:
         raise HTTPException(status_code=404, detail="图片未找到")
-    
-    # 删除文件
-    if os.path.exists(db_image.file_path):
-        os.remove(db_image.file_path)
-    
-    # 删除数据库记录
+      # 删除数据库记录（不再删除本地文件，因为使用图床）
     db.delete(db_image)
     db.commit()
     
     return {"message": "图片已删除", "id": image_id}
+
+
+# PicGo 上传相关模型
+class PicGoUploadRequest(BaseModel):
+    api_key: Optional[str] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    tags: Optional[str] = None
+    album_id: Optional[str] = None
+    category_id: Optional[str] = None
+    width: Optional[int] = None
+    expiration: Optional[str] = None
+    nsfw: Optional[int] = 0
+    format: Optional[str] = "json"
+    use_file_date: Optional[int] = 0
+
+
+class PicGoUploadResponse(BaseModel):
+    status_code: int
+    success: Optional[dict] = None
+    error: Optional[dict] = None
+    image: Optional[dict] = None
+    status_txt: str
+
+
+# PicGo 上传 API
+@app.post("/upload/picgo", response_model=PicGoUploadResponse)
+async def upload_to_picgo(
+    file: UploadFile = File(...),
+    api_key: Optional[str] = None,
+    title: Optional[str] = None,
+    description: Optional[str] = None,
+    tags: Optional[str] = None,
+    album_id: Optional[str] = None,
+    category_id: Optional[str] = None,
+    width: Optional[int] = None,
+    expiration: Optional[str] = None,
+    nsfw: Optional[int] = 0,
+    format: Optional[str] = "json",
+    use_file_date: Optional[int] = 0,
+    db: Session = Depends(get_db)
+):
+    """上传图片到 PicGo 图床，支持指定相册
+    
+    Args:
+        file: 图片文件
+        album_id: 相册ID（可选），必须是你的API key用户拥有的相册
+        api_key: PicGo API密钥
+        title: 图片标题
+        description: 图片描述
+        tags: 图片标签（逗号分隔）
+        category_id: 分类ID
+        width: 目标宽度
+        expiration: 过期时间（如 PT5M 表示5分钟，P3D 表示3天）
+        nsfw: 是否NSFW内容 (0或1)
+        format: 返回格式 (json, redirect, txt)
+        use_file_date: 使用文件日期而非上传日期 (0或1)
+    """
+
+    album_id = "Spkw6"
+
+    # 验证 API 密钥 - 优先使用参数中的api_key，否则使用配置的API密钥
+    picgo_key = api_key or PICGO_API_KEY
+    if not picgo_key:
+        raise HTTPException(
+            status_code=400,
+            detail="PicGo API 密钥未设置，请在环境变量中设置 PICGO_API_KEY"
+        )
+
+    # 检查文件类型
+    allowed_types = ["image/jpeg", "image/png", "image/gif", "image/webp"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=400,
+            detail="只允许上传图片文件（JPEG, PNG, GIF, WEBP）"
+        )
+
+    try:
+        # 读取文件内容
+        file_content = await file.read()
+
+        # 准备请求头 - 只包含API密钥，让httpx自动处理multipart/form-data
+        headers = {
+            "X-API-Key": picgo_key
+        }
+
+        # 准备文件上传数据 - 按照curl示例的格式
+        files = {
+            "source": (
+                file.filename or "image.jpg",
+                file_content,
+                file.content_type
+            )
+        }
+
+        # 准备其他表单数据
+        data = {}
+        if title:
+            data["title"] = title
+        if description:
+            data["description"] = description
+        if tags:
+            data["tags"] = tags
+        if album_id:
+            data["album_id"] = album_id
+        if category_id:
+            data["category_id"] = category_id
+        if width:
+            data["width"] = str(width)
+        if expiration:
+            data["expiration"] = expiration
+        if nsfw is not None:
+            data["nsfw"] = str(nsfw)
+        if format:
+            data["format"] = format
+        if use_file_date is not None:
+            data["use_file_date"] = str(use_file_date)
+
+        # 发送请求到 PicGo API - 模拟curl命令的行为
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                PICGO_API_URL,
+                headers=headers,
+                files=files,
+                data=data
+            )
+
+        # 处理响应
+        if response.status_code == 200:
+            try:
+                result = response.json()
+
+                # 如果上传成功，保存图片信息到数据库
+                if result.get("status_code") == 200 and result.get("image"):
+                    image_info = result["image"]                    # 计算文件哈希
+                    file_hash = hashlib.md5(file_content).hexdigest()
+                    
+                    # 检查数据库中是否已存在
+                    existing_image = get_image_by_hash(db, file_hash)
+                    
+                    if not existing_image:
+                        # 获取图片尺寸信息
+                        width = image_info.get("width", 0)
+                        height = image_info.get("height", 0)
+                        
+                        # 如果PicGo返回的响应中没有尺寸信息，从文件内容获取
+                        if (width == 0 or height == 0) and file_content:
+                            try:
+                                width, height = get_image_dimensions(file_content)
+                                print(f"从文件内容获取图片尺寸: {width}x{height}")
+                            except Exception as e:
+                                print(f"获取图片尺寸失败: {e}")
+                                width, height = 0, 0
+                        
+                        # 保存图片信息到数据库
+                        db_image = add_image(
+                            db=db,
+                            file_name=image_info.get("filename", file.filename),
+                            file_hash=file_hash,
+                            file_path=image_info.get("url", ""),
+                            image_bed_url=image_info.get("url", ""),
+                            is_checked=True,
+                            file_size=image_info.get("size", 0),
+                            mime_type=image_info.get(
+                                "mime", file.content_type
+                            ),
+                            width=width,
+                            height=height
+                        )
+
+                        # 在响应中添加数据库 ID 和相册信息
+                        result["database_id"] = db_image.id
+                        if album_id:
+                            result["uploaded_to_album"] = album_id
+                            result["album_upload"] = True
+                    else:
+                        # 如果图片已存在，仍然记录相册信息
+                        if album_id:
+                            result["uploaded_to_album"] = album_id
+                            result["album_upload"] = True
+                            result["note"] = "图片已存在于数据库中"
+
+                return PicGoUploadResponse(**result)
+            except ValueError as e:
+                # JSON解析失败
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"PicGo API 返回的响应格式错误: {str(e)}"
+                )
+        else:
+            # 上传失败
+            error_detail = response.text
+            try:
+                error_json = response.json()
+                if "error" in error_json:
+                    error_detail = error_json["error"].get(
+                        "message", error_detail
+                    )
+                elif "status_txt" in error_json:
+                    error_detail = error_json["status_txt"]
+            except Exception:
+                pass
+
+            return PicGoUploadResponse(
+                status_code=response.status_code,
+                error={
+                    "message": error_detail,
+                    "code": response.status_code
+                },
+                status_txt="ERROR"
+            )
+
+    except httpx.TimeoutException:
+        raise HTTPException(
+            status_code=408,
+            detail="上传超时，请重试"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"上传失败: {str(e)}"
+        )
+
+
+# 从 URL 上传到 PicGo
+@app.post("/upload/picgo-url")
+async def upload_url_to_picgo(
+    source_url: str,
+    api_key: Optional[str] = None,
+    title: Optional[str] = None,
+    description: Optional[str] = None,
+    tags: Optional[str] = None,
+    album_id: Optional[str] = None,
+    category_id: Optional[str] = None,
+    width: Optional[int] = None,
+    expiration: Optional[str] = None,
+    nsfw: Optional[int] = 0,
+    format: Optional[str] = "json",
+    use_file_date: Optional[int] = 0
+):
+    """通过 URL 上传图片到 PicGo 图床"""
+
+    # 验证 API 密钥
+    picgo_key = api_key or PICGO_API_KEY
+    if not picgo_key:
+        raise HTTPException(
+            status_code=400,
+            detail="PicGo API 密钥未设置"
+        )
+
+    try:
+        # 准备上传数据
+        headers = {
+            "X-API-Key": picgo_key,
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+
+        data = {
+            "source": source_url
+        }
+
+        if title:
+            data["title"] = title
+        if description:
+            data["description"] = description
+        if tags:
+            data["tags"] = tags
+        if album_id:
+            data["album_id"] = album_id
+        if category_id:
+            data["category_id"] = category_id
+        if width:
+            data["width"] = str(width)
+        if expiration:
+            data["expiration"] = expiration
+        if nsfw is not None:
+            data["nsfw"] = str(nsfw)
+        if format:
+            data["format"] = format
+        if use_file_date is not None:
+            data["use_file_date"] = str(use_file_date)
+
+        # 发送请求到 PicGo API
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                PICGO_API_URL,
+                headers=headers,
+                data=data
+            )
+
+        # 处理响应
+        if response.status_code == 200:
+            result = response.json()
+            return result
+        else:
+            # 上传失败
+            error_detail = response.text
+            try:
+                error_json = response.json()
+                error_detail = error_json.get(
+                    "error", {}
+                ).get("message", error_detail)
+            except Exception:
+                pass
+
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=f"PicGo 上传失败: {error_detail}"
+            )
+
+    except httpx.TimeoutException:
+        raise HTTPException(
+            status_code=408,
+            detail="上传超时，请重试"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"上传失败: {str(e)}"
+        )
+
+
+# 获取 PicGo 配置状态
+@app.get("/picgo/status")
+async def get_picgo_status():
+    """获取 PicGo 配置状态"""
+    return {
+        "api_configured": bool(PICGO_API_KEY),
+        "api_url": PICGO_API_URL,
+        "has_api_key": bool(PICGO_API_KEY)
+    }
+
+
+# 专门上传到指定相册的端点
+@app.post("/upload/picgo/album/{album_id}")
+async def upload_to_picgo_album(
+    album_id: str,
+    file: UploadFile = File(...),
+    api_key: Optional[str] = None,
+    title: Optional[str] = None,
+    description: Optional[str] = None,
+    tags: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """直接上传图片到指定相册
+    
+    Args:
+        album_id: 相册ID（路径参数）
+        file: 图片文件
+        api_key: PicGo API密钥
+        title: 图片标题
+        description: 图片描述
+        tags: 图片标签（逗号分隔）
+    """
+    
+    # 调用主上传函数，指定相册ID
+    return await upload_to_picgo(
+        file=file,
+        api_key=api_key,
+        title=title,
+        description=description,
+        tags=tags,
+        album_id=album_id,  # 使用路径中的相册ID
+        db=db
+    )
+
+
+# 批量上传到相册的端点
+@app.post("/upload/picgo/album/{album_id}/batch")
+async def batch_upload_to_album(
+    album_id: str,
+    files: List[UploadFile] = File(...),
+    api_key: Optional[str] = None,
+    titles: Optional[str] = None,  # 逗号分隔的标题列表
+    description: Optional[str] = None,
+    tags: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """批量上传图片到指定相册
+    
+    Args:
+        album_id: 相册ID
+        files: 图片文件列表
+        api_key: PicGo API密钥
+        titles: 图片标题列表（逗号分隔，对应文件顺序）
+        description: 通用描述
+        tags: 通用标签
+    """
+    
+    if len(files) > 10:
+        raise HTTPException(status_code=400, detail="一次最多上传10张图片")
+    
+    # 解析标题列表
+    title_list = []
+    if titles:
+        title_list = [title.strip() for title in titles.split(',')]
+    
+    results = []
+    success_count = 0
+    
+    for i, file in enumerate(files):
+        try:
+            # 为每个文件分配标题
+            file_title = title_list[i] if i < len(title_list) else None
+            
+            result = await upload_to_picgo(
+                file=file,
+                api_key=api_key,
+                title=file_title,
+                description=description,
+                tags=tags,
+                album_id=album_id,
+                db=db
+            )
+            
+            results.append({
+                "filename": file.filename,
+                "success": True,
+                "result": result.dict() if hasattr(result, 'dict') else result
+            })
+            success_count += 1
+            
+        except Exception as e:
+            results.append({
+                "filename": file.filename,
+                "success": False,
+                "error": str(e)
+            })
+    
+    return {
+        "album_id": album_id,
+        "total_files": len(files),
+        "results": results,
+        "success_count": success_count,
+        "error_count": len(files) - success_count
+    }
+
+
+# 相册信息模型
+class AlbumUploadSummary(BaseModel):
+    """相册上传摘要"""
+    album_id: str
+    total_uploaded: int
+    success_count: int
+    error_count: int
+    uploaded_files: List[str]
+
+
+# 获取相册上传统计
+@app.get("/picgo/album/{album_id}/stats")
+async def get_album_upload_stats(
+    album_id: str,
+    api_key: Optional[str] = None
+):
+    """获取指定相册的上传统计信息
+    
+    Args:
+        album_id: 相册ID
+        api_key: PicGo API密钥
+    """
+    
+    picgo_key = api_key or PICGO_API_KEY
+    if not picgo_key:
+        raise HTTPException(
+            status_code=400,
+            detail="PicGo API 密钥未设置"
+        )
+    
+    # 这里可以根据需要实现获取相册统计的逻辑
+    # 目前返回基本信息
+    return {
+        "album_id": album_id,
+        "message": f"相册 {album_id} 统计信息",
+        "note": "此功能需要根据PicGo API具体实现"
+    }
+
+
+# 添加获取图片尺寸的辅助函数
+def get_image_dimensions(image_content: bytes) -> tuple[int, int]:
+    """从图片二进制数据获取宽度和高度"""
+    try:
+        with PILImage.open(BytesIO(image_content)) as img:
+            return img.size  # 返回 (width, height)
+    except Exception as e:
+        print(f"获取图片尺寸失败: {e}")
+        return (0, 0)
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8001)
 

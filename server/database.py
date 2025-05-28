@@ -27,13 +27,15 @@ class Image(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     file_name = Column(String(255), unique=True, index=True)  # 文件名，包含扩展名
     file_hash = Column(String(32), unique=True, index=True)   # 图片的MD5哈希值
-    file_path = Column(String(255))                           # 图片存储路径
+    file_path = Column(String(255))                           # 本地图片存储路径（可选）
+    image_bed_url = Column(String(500))                       # 图床URL（主要获取图片的地址）
     is_checked = Column(Boolean, default=False)               # 是否已审核
     likes = Column(Integer, default=0)                        # 点赞数
-    dislikes = Column(Integer, default=0)                     # 点踩数
-    upload_time = Column(DateTime, default=datetime.now)      # 上传时间
+    dislikes = Column(Integer, default=0)                     # 点踩数    upload_time = Column(DateTime, default=datetime.now)      # 上传时间
     file_size = Column(Integer)                               # 文件大小（字节）
     mime_type = Column(String(50))                            # MIME类型
+    width = Column(Integer, default=0)                        # 图片宽度（像素）
+    height = Column(Integer, default=0)                       # 图片高度（像素）
 
 # 创建数据库表
 def create_tables():
@@ -48,15 +50,19 @@ def get_db():
         db.close()
 
 # 添加新图片到数据库
-def add_image(db: Session, file_name: str, file_hash: str, file_path: str, 
-              is_checked: bool, file_size: int, mime_type: str):
+def add_image(db: Session, file_name: str, file_hash: str, file_path: str,
+              image_bed_url: str, is_checked: bool, file_size: int, mime_type: str,
+              width: int, height: int):
     db_image = Image(
         file_name=file_name,
         file_hash=file_hash,
         file_path=file_path,
+        image_bed_url=image_bed_url,
         is_checked=is_checked,
         file_size=file_size,
-        mime_type=mime_type
+        mime_type=mime_type,
+        width=width,
+        height=height
     )
     db.add(db_image)
     db.commit()

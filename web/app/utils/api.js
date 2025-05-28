@@ -4,13 +4,13 @@ export function getApiBaseUrl() {
     // 客户端运行时，使用Nuxt的运行时配置
     const config = useRuntimeConfig()
     return process.env.NODE_ENV === 'development' 
-      ? (config.public.devApiBaseUrl || 'http://localhost:8000')
+      ? (config.public.devApiBaseUrl || 'http://localhost:8001')
       : config.public.apiBaseUrl
   } else {
     // 服务端运行时，使用Nuxt的运行时配置
     const config = useRuntimeConfig()
     return process.env.NODE_ENV === 'development' 
-      ? (config.public.devApiBaseUrl || 'http://localhost:8000')
+      ? (config.public.devApiBaseUrl || 'http://localhost:8001')
       : config.public.apiBaseUrl
   }
 }

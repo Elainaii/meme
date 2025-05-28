@@ -10,6 +10,10 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 # 管理员密码配置
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")  # 可以通过环境变量设置
 
+# PicGo 图床配置
+PICGO_API_URL = "https://www.picgo.net/api/1/upload"
+PICGO_API_KEY = "chv_S0DhK_bc5877cd95324f9765378583d06860a94de167f1ba53acea46d9222c7710690062cf6bbc81ae58aabfe71240dc0ea4a6875f7f8fca5bf16520f039f6b816420d"
+
 # 密码加密
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
