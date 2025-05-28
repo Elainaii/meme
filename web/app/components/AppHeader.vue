@@ -39,12 +39,11 @@ function handleLogout() {
 
 <template>
   <header class="border-b border-gray-200 bg-white/80 left-0 right-0 top-0 fixed z-10 backdrop-blur-md dark:border-gray-800 dark:bg-gray-900/80">
-    <div class="mx-auto px-4 flex h-14 items-center justify-between container sm:h-16">
-      <!-- Logo and title -->
+    <div class="mx-auto px-4 flex h-14 items-center justify-between container sm:h-16">      <!-- Logo and title -->
       <NuxtLink to="/" class="font-medium flex gap-1 items-center sm:gap-2">
-        <span class="i-carbon-image text-lg text-blue-500 sm:text-xl" />
+        <img src="/icon.svg" alt="Logo" class="w-5 h-5 sm:w-6 sm:h-6" />
         <span class="text-sm sm:text-base">{{ appName }}</span>
-      </NuxtLink>      <!-- Navigation -->
+      </NuxtLink><!-- Navigation -->
       <div class="flex gap-2 items-center sm:gap-4">
         <NuxtLink
           v-if="!isHomePage"

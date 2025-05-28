@@ -7,13 +7,12 @@ const showUploadBox = ref(false)
 
 <template>
   <div class="px-4 pt-6 flex flex-col h-full items-center justify-center sm:px-6">
-    <div class="mb-6 text-center sm:mb-10">
-      <div class="mb-3 flex justify-center sm:mb-4">
-        <div class="i-carbon-image text-5xl text-blue-500 sm:text-6xl" />
+    <div class="mb-6 text-center sm:mb-10">      <div class="mb-3 flex justify-center sm:mb-4">
+        <img src="/icon-large.svg" alt="Logo" class="w-20 h-20 sm:w-24 sm:h-24" />
       </div>
       <h1 class="text-2xl font-bold mb-2 sm:text-3xl">
         <span class="text-blue-500 mr-1">随机</span>
-        <span>图片</span>
+        <span>meme</span>
         <span class="text-black ml-1 px-2 py-1 rounded bg-yellow inline-block">展示</span>
       </h1>
       <p class="text-sm text-gray-500 mx-auto max-w-md sm:text-base dark:text-gray-400">

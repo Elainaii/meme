@@ -1,16 +1,16 @@
 export default defineNuxtConfig({
   srcDir: 'app',
+  dir: {
+    public: '../public'
+  },
   app: {
     head: {
       meta: [
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-        { name: 'description', content: '随机展示服务器中存储的精美图片' }
+        { name: 'description', content: '随机展示服务器中存储的沙雕梗图～(∠・ω< )⌒★' }
       ],      link: [
-        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
-        { rel: 'icon', type: 'image/png', sizes: '16x16', href: '/favicon-16x16.png' },
-        { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon-32x32.png' },
-        { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },
-        { rel: 'manifest', href: '/site.webmanifest' }
+        { rel: 'icon', type: 'image/svg+xml', href: '/icon.svg' },
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }
       ]
     },
     pageTransition: { name: 'page', mode: 'out-in' }
