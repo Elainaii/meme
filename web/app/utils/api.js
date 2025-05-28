@@ -45,3 +45,13 @@ export async function apiRequest(endpoint, options = {}) {
 export function getImageUrl(path) {
   return `${API_CONFIG.baseURL}${path}`
 }
+
+// 预加载图片
+export function preloadImage(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve(img)
+    img.onerror = reject
+    img.src = url
+  })
+}
