@@ -39,7 +39,7 @@ onUnmounted(() => {
             <a 
               href="#" 
               @click="handleHelpClick"
-              class="text-gray-600 flex gap-1.5 transition-colors items-center dark:text-gray-300 hover:text-blue-500"
+              class="text-gray-600 flex gap-1.5 transition-colors items-center dark:text-gray-300 hover:text-pink-500"
             >
               <span class="i-carbon-help" />
               <span>帮助</span>
@@ -55,7 +55,7 @@ onUnmounted(() => {
             </div>
           </div>
           
-          <a href="https://github.com/Elainaii/meme" target="_blank" class="text-gray-600 flex gap-1.5 transition-colors items-center dark:text-gray-300 hover:text-blue-500">
+          <a href="https://github.com/Elainaii/meme" target="_blank" class="text-gray-600 flex gap-1.5 transition-colors items-center dark:text-gray-300 hover:text-pink-500">
             <span class="i-carbon-logo-github" />
             <span>GitHub</span>
           </a>

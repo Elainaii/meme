@@ -53,10 +53,9 @@ function handleLogout() {
           <span class="i-carbon-home" />
           <span class="xs:inline hidden">首页</span>
         </NuxtLink>        <!-- Admin related buttons -->
-        <template v-if="!isAuthenticated">
-          <NuxtLink
+        <template v-if="!isAuthenticated">          <NuxtLink
             to="/login"
-            class="text-xs px-2 py-1 rounded-md flex gap-1 transition-colors items-center sm:text-sm sm:px-3 sm:py-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+            class="text-xs px-2 py-1 rounded-md flex gap-1 transition-colors items-center sm:text-sm sm:px-3 sm:py-1.5 hover:bg-pink-50 dark:hover:bg-pink-900/30 text-pink-600 dark:text-pink-400"
           >
             <span class="i-carbon-password" />
             <span class="xs:inline hidden">登录</span>

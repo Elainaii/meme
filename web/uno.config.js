@@ -10,10 +10,20 @@ export default defineConfig({
       }
     }),
     presetTypography()
-  ],
-  theme: {
+  ],  theme: {
     colors: {
-      yellow: '#FFD166'
+      yellow: '#F2DCAB',      pink: {
+        50: '#FEFD8FB',
+        100: '#FEF1F6',
+        200: '#FDE3ED',
+        300: '#FCC7DB',
+        400: '#FAA5C6',
+        500: '#FD8FB4',
+        600: '#FE649A',
+        700: '#E94C85',
+        800: '#CE3870',
+        900: '#A8295D',
+      }
     }
   },
   shortcuts: {

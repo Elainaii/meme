@@ -291,16 +291,14 @@ onUnmounted(() => {
         </h2>
         <p class="text-sm text-gray-600 mb-4 dark:text-gray-400">
           {{ error }}
-        </p>
-        <button @click="getNewImage"
-                class="text-blue-700 px-4 py-2 rounded-lg bg-blue-100 inline-flex gap-2 transition-colors items-center dark:text-blue-300 dark:bg-blue-900/50 hover:bg-blue-200 dark:hover:bg-blue-800/70">
+        </p>        <button @click="getNewImage"
+                class="text-pink-700 px-4 py-2 rounded-lg bg-pink-100 inline-flex gap-2 transition-colors items-center dark:text-pink-300 dark:bg-pink-900/50 hover:bg-pink-200 dark:hover:bg-pink-800/70">
           <span class="i-carbon-restart"/>
           <span>重试</span>
         </button>
       </div>
-      <div v-else-if="loading && !imageUrl" class="p-4 text-center">
-        <div class="mb-4 flex justify-center">
-          <div class="i-carbon-image-search text-4xl text-blue-500 animate-pulse"/>
+      <div v-else-if="loading && !imageUrl" class="p-4 text-center">        <div class="mb-4 flex justify-center">
+          <div class="i-carbon-image-search text-4xl text-pink-500 animate-pulse"/>
         </div>
         <h2 class="text-lg font-medium mb-3">
           正在加载图片...
@@ -325,11 +323,10 @@ onUnmounted(() => {
             @click="openPreview"
             @load="onImageLoad"
         />
-        </div>
-        <button
+        </div>        <button
             @click="getNewImage"
             :disabled="switchingImage || (!nextImageUrl && !loading)"
-            class="text-blue-700 px-4 py-2 rounded-lg bg-blue-100 inline-flex gap-2 transition-colors items-center dark:text-blue-300 dark:bg-blue-900/50 hover:bg-blue-200 dark:hover:bg-blue-800/70 disabled:opacity-50"
+            class="text-pink-700 px-4 py-2 rounded-lg bg-pink-100 inline-flex gap-2 transition-colors items-center dark:text-pink-300 dark:bg-pink-900/50 hover:bg-pink-200 dark:hover:bg-pink-800/70 disabled:opacity-50"
         >
           <span class="i-carbon-renew" :class="{ 'animate-spin': switchingImage || !nextImageUrl }"/>
           <span>{{ switchingImage ? '换图中' : (!nextImageUrl ? '准备中' : '换一张') }}</span>

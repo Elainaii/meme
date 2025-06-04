@@ -11,7 +11,7 @@ const showUploadBox = ref(false)
         <img src="/icon-large.svg" alt="Logo" class="w-20 h-20 sm:w-24 sm:h-24" />
       </div>
       <h1 class="text-2xl font-bold mb-2 sm:text-3xl">
-        <span class="text-blue-500 mr-1">随机</span>
+        <span class="text-pink-500 mr-1">随机</span>
         <span>meme</span>
         <span class="text-black ml-1 px-2 py-1 rounded bg-yellow inline-block">展示</span>
       </h1>

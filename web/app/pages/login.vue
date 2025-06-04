@@ -71,14 +71,14 @@ function goHome() {
 </script>
 
 <template>
-  <div class="min-h-screen px-4 pt-6 flex flex-col items-center justify-center sm:px-6 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+  <div class="min-h-screen px-4 pt-6 flex flex-col items-center justify-center sm:px-6 bg-gradient-to-br from-pink-50 to-rose-100 dark:from-gray-900 dark:to-gray-800">
     <div class="mb-8 text-center sm:mb-10">
       <div class="mb-4 flex justify-center sm:mb-6">
-        <div class="i-carbon-password text-6xl text-blue-500 sm:text-7xl" />
+        <div class="i-carbon-password text-6xl text-pink-500 sm:text-7xl" />
       </div>
       <h1 class="text-3xl font-bold mb-3 sm:text-4xl">
         <span>管理员</span>
-        <span class="text-white ml-2 px-3 py-1 rounded-lg bg-blue-500 inline-block shadow-md">登录</span>
+        <span class="text-white ml-2 px-3 py-1 rounded-lg bg-pink-500 inline-block shadow-md">登录</span>
       </h1>
       <p class="text-base text-gray-600 mx-auto max-w-md sm:text-lg dark:text-gray-300">
         请输入管理员密码以访问系统管理功能
@@ -116,7 +116,7 @@ function goHome() {
           <button 
             type="submit"
             :disabled="loading || !password"
-            class="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-colors shadow-md"
+            class="w-full bg-pink-600 text-white py-3 px-4 rounded-lg hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-colors shadow-md"
           >
             <div class="flex items-center justify-center">
               <div v-if="loading" class="i-carbon-circle-dash animate-spin mr-2" />
@@ -141,7 +141,7 @@ function goHome() {
       <div class="mt-8 text-center">
       <div class="text-sm text-gray-500 px-6 py-3 rounded-full bg-white/60 shadow-sm backdrop-blur-md sm:text-base dark:text-gray-400 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
         <div class="flex items-center justify-center">
-          <div class="i-carbon-information text-blue-500 mr-2" />
+          <div class="i-carbon-information text-pink-500 mr-2" />
           <span>仅限管理员访问</span>
         </div>
       </div>
