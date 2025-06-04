@@ -360,21 +360,8 @@ function closeUploader() {
           <span v-if="uploading" class="i-carbon-renew animate-spin" />
           <span v-else class="i-carbon-upload" />
           <span>
-            {{ uploading ? '批量上传中...' : `上传 ${selectedFiles.filter(f => f.status === 'pending' || f.status === 'error').length} 张图片` }}
-          </span>
-        </button>
-      </div>
-        <!-- 成功消息 -->
-      <div v-if="uploadSuccess || uploadResults.length > 0" class="mt-4 p-3 rounded-lg bg-green-50 dark:bg-green-900/30">
-        <div class="flex items-center gap-2 text-green-700 dark:text-green-400">
-          <span class="i-carbon-checkmark-filled" />
-          <div class="text-sm">
-            <div v-for="result in uploadResults" :key="result">{{ result }}</div>
-            <div v-if="uploadSuccess && uploadResults.length === 0">
-              图片上传成功！感谢你的贡献！
-            </div>
-          </div>
-        </div>
+            {{ uploading ? '上传中...' : `上传 ${selectedFiles.filter(f => f.status === 'pending' || f.status === 'error').length} 张图片` }}
+          </span>        </button>
       </div>
         <!-- 错误消息 -->
       <div v-if="uploadError" class="mt-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/30">
