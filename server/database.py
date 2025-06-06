@@ -75,15 +75,27 @@ def get_image_by_filename(db: Session, filename: str):
 
 # 获取随机一张已审核的图片，可以排除当前图片
 def get_random_checked_image(db: Session, current_id: int = None):
+    import random
+    
+    # 构建基础查询
     query = db.query(Image).filter(Image.is_checked == True)
     
     # 如果提供了当前图片ID，排除它
     if current_id:
         query = query.filter(Image.id != current_id)
     
-    # 使用数据库随机函数选择一张图片
-    # 注意：不同数据库的随机函数可能不同，这里使用MySQL的RAND()
-    return query.order_by(func.rand()).first()
+    # 获取符合条件的图片总数
+    total_count = query.count()
+    
+    # 如果没有符合条件的图片，返回None
+    if total_count == 0:
+        return None
+    
+    # 生成随机偏移量
+    random_offset = random.randint(0, total_count - 1)
+    
+    # 使用偏移量获取随机图片
+    return query.offset(random_offset).first()
 
 # 获取所有已审核的图片
 def get_all_checked_images(db: Session, skip: int = 0, limit: int = 100):
