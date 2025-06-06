@@ -2,6 +2,7 @@
 from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+import time
 
 # 导入日志
 from logger_config import get_logger
@@ -90,6 +91,7 @@ async def get_checked_images(
     db: Session = Depends(get_db)
 ):
     """获取已审核图片列表（分页），返回包含图床URL的图片信息"""
+    start_time = time.time()
     # 计算跳过的记录数
     skip = (page - 1) * page_size
     images = get_all_checked_images(db, skip=skip, limit=page_size)
@@ -97,7 +99,8 @@ async def get_checked_images(
     # 获取总数
     total = db.query(Image).filter(Image.is_checked == True).count()
     total_pages = (total + page_size - 1) // page_size
-    
+    end_time = time.time()
+    logger.debug(f"Fetched checked images in {end_time - start_time:.2f} seconds")
     return {
         "images": [
             {

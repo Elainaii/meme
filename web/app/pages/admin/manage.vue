@@ -274,9 +274,8 @@ function formatDate(dateString) {
             class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden relative group transition-transform duration-200 hover:scale-105"
             @mouseenter="hoveredImage = image.id"
             @mouseleave="hoveredImage = null"
-          >
-            <div class="relative">              <img 
-                :src="getImageUrl(`/image/unchecked/${image.id}`)"
+          >            <div class="relative">              <img 
+                :src="image.image_url || getImageUrl(`/image/unchecked/${image.id}`)"
                 :alt="image.file_name"
                 class="w-full h-48 object-cover"
               />
@@ -317,9 +316,8 @@ function formatDate(dateString) {
             class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden relative group transition-transform duration-200 hover:scale-105"
             @mouseenter="hoveredImage = image.id"
             @mouseleave="hoveredImage = null"
-          >
-            <div class="relative">              <img 
-                :src="getImageUrl(`/image/checked/${image.id}`)"
+          >            <div class="relative">              <img 
+                :src="image.image_url || getImageUrl(`/image/checked/${image.id}`)"
                 :alt="image.file_name"
                 class="w-full h-48 object-cover"
               />
