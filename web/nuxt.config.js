@@ -15,10 +15,11 @@ export default defineNuxtConfig({
     },
     pageTransition: { name: 'page', mode: 'out-in' }
   },
-    runtimeConfig: {
+  runtimeConfig: {
     public: {
       apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL ,
-      devApiBaseUrl: process.env.NUXT_PUBLIC_DEV_API_BASE_URL || 'http://localhost:8000'
+      devApiBaseUrl: process.env.NUXT_PUBLIC_DEV_API_BASE_URL || 'http://localhost:8000',
+      maxUploadFiles: process.env.NUXT_PUBLIC_MAX_UPLOAD_FILES || 9
     }
   },
   

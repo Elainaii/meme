@@ -3,6 +3,10 @@ import { ref } from 'vue'
 import { apiRequest } from '~/utils/api'
 
 const emit = defineEmits(['close'])
+const { $config } = useNuxtApp()
+
+// 从环境变量获取最大上传文件数量
+const maxUploadFiles = parseInt($config.public.maxUploadFiles) || 9
 
 const uploading = ref(false)
 const uploadSuccess = ref(false)
@@ -21,9 +25,9 @@ function handleFileSelect(event) {
 
 // 处理文件
 function processFiles(files) {
-  // 限制最多9张图片
-  if (selectedFiles.value.length + files.length > 9) {
-    uploadError.value = `最多只能选择9张图片，当前已选择${selectedFiles.value.length}张`
+  // 限制最多上传文件数量（从环境变量获取）
+  if (selectedFiles.value.length + files.length > maxUploadFiles) {
+    uploadError.value = `最多只能选择${maxUploadFiles}张图片，当前已选择${selectedFiles.value.length}张`
     return
   }
   
@@ -239,9 +243,8 @@ function closeUploader() {
         <div class="flex flex-col items-center">
           <span class="i-carbon-cloud-upload text-4xl text-pink-500 mb-3" />          <p class="text-gray-600 dark:text-gray-300 mb-2">
             点击选择文件或拖拽文件到此处
-          </p>
-          <p class="text-xs text-gray-500 dark:text-gray-400">
-            支持 JPG、PNG、GIF 等格式，文件大小不超过 5MB，最多9张图片
+          </p>          <p class="text-xs text-gray-500 dark:text-gray-400">
+            支持 JPG、PNG、GIF 等格式，文件大小不超过 5MB，最多{{ maxUploadFiles }}张图片
           </p>
         </div>
       </div>      
